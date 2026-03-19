@@ -188,23 +188,36 @@ function getCellEl(i) {
     return document.querySelector(`.hex[data-index='${i}']`);
 }
 
-// ===== クリック =====
-document.addEventListener("click", (e) => {
+let pressTimer;
+let isLongPress = false;
+
+// ===== PC + スマホ両対応 =====
+document.addEventListener("pointerdown", (e) => {
     const target = e.target.closest(".hex");
     if (!target || gameOver) return;
-    openCell(parseInt(target.dataset.index));
-});
 
-// ===== 長押しフラグ =====
-let timer;
-document.addEventListener("mousedown", (e) => {
-    const target = e.target.closest(".hex");
-    if (!target) return;
     const idx = parseInt(target.dataset.index);
-    timer = setTimeout(()=>toggleFlag(idx), 500);
-});
-document.addEventListener("mouseup", ()=>clearTimeout(timer));
+    isLongPress = false;
 
+    pressTimer = setTimeout(() => {
+        toggleFlag(idx);
+        isLongPress = true;
+    }, 400); // 長押し判定
+});
+
+document.addEventListener("pointerup", (e) => {
+    clearTimeout(pressTimer);
+
+    const target = e.target.closest(".hex");
+    if (!target || gameOver) return;
+
+    const idx = parseInt(target.dataset.index);
+
+    // 長押しじゃなければ開く
+    if (!isLongPress) {
+        openCell(idx);
+    }
+});
 // ===== 開く =====
 function openCell(i) {
     const cell = board[i];
