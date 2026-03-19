@@ -52,7 +52,7 @@ button{padding:10px 20px;margin:5px;border-radius:10px;border:none;cursor:pointe
 
 <div id="container">
 
-<h1> Mine-s-Hexagon </h1>
+<h1>💣 Mine-s-Hexagon 💣</h1>
 
 <div id="menu">
 <button onclick="startGame('normal')">Normal</button>
@@ -79,6 +79,10 @@ let undoUsed=false,lastSafeState=null;
 let startTime=0,timerInterval,currentMode="";
 let flagMistakes=0;
 
+// ★追加（制限）
+let unflagLimit=0;
+let unflagUsed=0;
+
 const game=document.getElementById("game");
 
 // ===== 難易度 =====
@@ -88,10 +92,27 @@ currentMode=mode;
 document.getElementById("menu").classList.add("hidden");
 document.getElementById("gameArea").classList.remove("hidden");
 
-if(mode==="normal"){size=7;bombCount=Math.floor(size*size*0.20);}
-if(mode==="hard"){size=9;bombCount=Math.floor(size*size*0.25);}
-if(mode==="expert"){size=11;bombCount=Math.floor(size*size*0.30);}
-if(mode==="remaster"){size=13;bombCount=Math.floor(size*size*0.33);}
+// ★制限込み設定
+if(mode==="normal"){
+    size=7;
+    bombCount=Math.floor(size*size*0.20);
+    unflagLimit=10;
+}
+if(mode==="hard"){
+    size=9;
+    bombCount=Math.floor(size*size*0.25);
+    unflagLimit=7;
+}
+if(mode==="expert"){
+    size=11;
+    bombCount=Math.floor(size*size*0.30);
+    unflagLimit=5;
+}
+if(mode==="remaster"){
+    size=13;
+    bombCount=Math.floor(size*size*0.33);
+    unflagLimit=3;
+}
 
 startTime=Date.now();
 clearInterval(timerInterval);
@@ -105,7 +126,9 @@ function initGame(){
 board=[];game.innerHTML="";
 gameOver=false;firstClick=true;
 undoUsed=false;lastSafeState=null;
+
 flagMistakes=0;
+unflagUsed=0;
 
 document.getElementById("undoBtn").classList.add("hidden");
 document.getElementById("backBtn").classList.add("hidden");
@@ -223,7 +246,6 @@ moved=true;
 countNumbers();
 }
 
-// 状態保存
 if(!cell.bomb){
 lastSafeState=JSON.stringify(board);
 }
@@ -251,15 +273,27 @@ if(c.open)return;
 
 const el=getCellEl(i);
 
+// フラグON
 if(!c.flag){
 c.flag=true;
 el.classList.add("flag");
 el.textContent="🚩";
+
 if(!c.bomb) flagMistakes++;
-}else{
+}
+// フラグOFF（制限あり）
+else{
+if(unflagUsed>=unflagLimit){
+alert("これ以上フラグ解除できない！");
+return;
+}
+
+unflagUsed++;
+
 c.flag=false;
 el.classList.remove("flag");
 el.textContent="";
+
 if(!c.bomb) flagMistakes--;
 }
 
@@ -270,10 +304,10 @@ updateStatus();
 function updateStatus(){
 let t=Math.floor((Date.now()-startTime)/1000);
 document.getElementById("status").textContent=
-`⏱ ${t}秒 | ❌ミス: ${flagMistakes}`;
+`⏱ ${t}秒 | ❌ミス:${flagMistakes} | 🔄フラグ解除:${unflagUsed}/${unflagLimit}`;
 }
 
-function updateTimer(){ updateStatus(); }
+function updateTimer(){updateStatus();}
 
 // ===== 終了 =====
 function endGame(text){
@@ -311,7 +345,7 @@ el.textContent="🚩";
 });
 
 gameOver=false;
-document.getElementById("status").textContent="防護服が壊れた！";
+document.getElementById("status").textContent="復帰！";
 document.getElementById("undoBtn").classList.add("hidden");
 document.getElementById("backBtn").classList.add("hidden");
 };
@@ -327,7 +361,7 @@ let best=localStorage.getItem(key);
 
 if(!best||time<best) localStorage.setItem(key,time);
 
-endGame("Congratulations！ "+time+"秒");
+endGame( Congratulations！ "+time+"秒");
 }
 }
 
@@ -355,11 +389,11 @@ alert(`操作方法
 
 タップ → 開く
 長押し → フラグ
-フラグ状態でタップ → 解除
+フラグ状態でタップ → 解除（難易度ごとに回数制限あり）
 
-開いたら隣接する爆弾の数が表示されます
-爆弾を避けて探し出しましょう
-防護服の耐久は一回までなので要注意
+ルール:
+爆弾を避けながら探し出しましょう
+爆弾に耐えられるのは一回きりなので要注意
 初手は必ず安全`);
 }
 
@@ -369,7 +403,7 @@ document.getElementById("secretZone").addEventListener("click",()=>{
 let now=Date.now();
 if(now-lastTap<300){
 document.getElementById("remasterBtn").classList.remove("hidden");
-alert("Re.Master 解放！");
+alert("Re.Masterが解除されました");
 }
 lastTap=now;
 });
