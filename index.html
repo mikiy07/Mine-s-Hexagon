@@ -10,26 +10,29 @@ body {
     font-family: sans-serif;
     background: #0f172a;
     color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+/* 中央コンテナ */
+#container {
     text-align: center;
 }
 
-h1 { margin: 20px; }
-
 button {
-    padding: 15px 30px;
+    padding: 12px 25px;
     margin: 10px;
-    font-size: 18px;
+    font-size: 16px;
     border-radius: 10px;
     border: none;
     cursor: pointer;
 }
 
-#menu {
-    margin-top: 50px;
-}
-
 .hidden { display: none; }
 
+/* 六角形 */
 .row {
     display: flex;
     margin-top: -15px;
@@ -40,8 +43,8 @@ button {
 }
 
 .hex {
-    width: 50px;
-    height: 50px;
+    width: 45px;
+    height: 45px;
     background: #1e293b;
     margin: 2px;
     clip-path: polygon(
@@ -57,9 +60,8 @@ button {
 .open { background: #94a3b8; }
 .bomb { background: red; color: white; }
 .flag { background: orange; }
-.cursor { outline: 3px solid yellow; }
 
-/* 数字カラー */
+/* 数字色 */
 .n0 { color: #3b82f6; }
 .n1 { color: #14b8a6; }
 .n2 { color: #22c55e; }
@@ -73,6 +75,8 @@ button {
 </head>
 <body>
 
+<div id="container">
+
 <h1>💣 Mine-s-Hexagon 💣</h1>
 
 <!-- メニュー -->
@@ -81,24 +85,26 @@ button {
     <button onclick="startGame('hard')">Hard</button>
     <button onclick="startGame('expert')">Expert</button>
     <button id="remasterBtn" class="hidden" onclick="startGame('remaster')">Re.Master</button>
-    <div id="secretZone" style="margin-top:20px;">👉 ここを長押し</div>
+    <div id="secretZone">👉 ダブルタップで？？？</div>
 </div>
 
 <!-- ゲーム -->
 <div id="gameArea" class="hidden">
     <div id="status">プレイ中</div>
     <div id="game"></div>
+    <button id="backBtn" class="hidden" onclick="goMenu()">メニューに戻る</button>
+</div>
+
 </div>
 
 <script>
 let size, bombCount;
 let board = [];
-let cursor = 0;
 let gameOver = false;
 
 const game = document.getElementById("game");
 
-// ===== 難易度設定 =====
+// ===== 難易度 =====
 function startGame(mode) {
     document.getElementById("menu").classList.add("hidden");
     document.getElementById("gameArea").classList.remove("hidden");
@@ -116,6 +122,8 @@ function initGame() {
     board = [];
     game.innerHTML = "";
     gameOver = false;
+    document.getElementById("status").textContent = "プレイ中";
+    document.getElementById("backBtn").classList.add("hidden");
 
     for (let y = 0; y < size; y++) {
         const row = document.createElement("div");
@@ -123,11 +131,9 @@ function initGame() {
 
         for (let x = 0; x < size; x++) {
             const i = y * size + x;
-
             const cell = document.createElement("div");
             cell.className = "hex";
             cell.dataset.index = i;
-
             row.appendChild(cell);
 
             board.push({ bomb:false, open:false, flag:false, count:0 });
@@ -185,23 +191,21 @@ function getCellEl(i) {
     return document.querySelector(`.hex[data-index='${i}']`);
 }
 
-// ===== 操作（タップ） =====
+// ===== クリック =====
 document.addEventListener("click", (e) => {
     const target = e.target.closest(".hex");
     if (!target || gameOver) return;
     openCell(parseInt(target.dataset.index));
 });
 
-// ===== 長押しでフラグ =====
+// ===== 長押しフラグ =====
 let timer;
 document.addEventListener("mousedown", (e) => {
     const target = e.target.closest(".hex");
     if (!target) return;
-
     const idx = parseInt(target.dataset.index);
     timer = setTimeout(()=>toggleFlag(idx), 500);
 });
-
 document.addEventListener("mouseup", ()=>clearTimeout(timer));
 
 // ===== 開く =====
@@ -217,8 +221,7 @@ function openCell(i) {
     if (cell.bomb) {
         el.textContent = "💣";
         el.classList.add("bomb");
-        gameOver = true;
-        document.getElementById("status").textContent = "ゲームオーバー！";
+        endGame("ゲームオーバー！");
         return;
     }
 
@@ -241,25 +244,36 @@ function toggleFlag(i) {
     getCellEl(i).classList.toggle("flag");
 }
 
+// ===== 終了処理 =====
+function endGame(text) {
+    gameOver = true;
+    document.getElementById("status").textContent = text;
+    document.getElementById("backBtn").classList.remove("hidden");
+}
+
 // ===== クリア =====
 function checkClear() {
     const cleared = board.every(c => c.open || c.bomb);
     if (cleared) {
-        gameOver = true;
-        document.getElementById("status").textContent = "クリア！🎉";
+        endGame("クリア！🎉");
     }
 }
 
-// ===== 隠し難易度解放 =====
-let secretTimer;
-document.getElementById("secretZone").addEventListener("mousedown", () => {
-    secretTimer = setTimeout(() => {
+// ===== メニュー戻る =====
+function goMenu() {
+    document.getElementById("menu").classList.remove("hidden");
+    document.getElementById("gameArea").classList.add("hidden");
+}
+
+// ===== ダブルタップで隠し =====
+let lastTap = 0;
+document.getElementById("secretZone").addEventListener("click", () => {
+    const now = Date.now();
+    if (now - lastTap < 300) {
         document.getElementById("remasterBtn").classList.remove("hidden");
         alert("Re.Master 解放！");
-    }, 3000);
-});
-document.getElementById("secretZone").addEventListener("mouseup", () => {
-    clearTimeout(secretTimer);
+    }
+    lastTap = now;
 });
 </script>
 
