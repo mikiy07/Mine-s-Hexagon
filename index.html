@@ -304,7 +304,7 @@ updateStatus();
 function updateStatus(){
 let t=Math.floor((Date.now()-startTime)/1000);
 document.getElementById("status").textContent=
-`⏱ ${t}秒 | ❌ミス:${flagMistakes} | 🔄フラグ解除:${unflagUsed}/${unflagLimit}`;
+`⏱ ${t}秒 | ❌ミス:${flagMistakes} | 🔄解除:${unflagUsed}/${unflagLimit}`;
 }
 
 function updateTimer(){updateStatus();}
@@ -361,7 +361,7 @@ let best=localStorage.getItem(key);
 
 if(!best||time<best) localStorage.setItem(key,time);
 
-endGame( Congratulations！ "+time+"秒");
+endGame("Congratulations！ "+time+"秒");
 }
 }
 
@@ -389,11 +389,12 @@ alert(`操作方法
 
 タップ → 開く
 長押し → フラグ
-フラグ状態でタップ → 解除（難易度ごとに回数制限あり）
+フラグ状態でタップ → 解除（回数制限あり）
 
 ルール:
 爆弾を避けながら探し出しましょう
-爆弾に耐えられるのは一回きりなので要注意
+爆弾だと思う場所にフラグを立ててください
+爆弾に耐えられるのは一回までなので要注意
 初手は必ず安全`);
 }
 
@@ -403,7 +404,7 @@ document.getElementById("secretZone").addEventListener("click",()=>{
 let now=Date.now();
 if(now-lastTap<300){
 document.getElementById("remasterBtn").classList.remove("hidden");
-alert("Re.Masterが解除されました");
+alert("Re.Master 解放！");
 }
 lastTap=now;
 });
