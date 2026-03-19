@@ -16,14 +16,11 @@ body {
     height: 100vh;
 }
 
-#container {
-    text-align: center;
-}
+#container { text-align: center; }
 
 button {
-    padding: 12px 25px;
-    margin: 10px;
-    font-size: 16px;
+    padding: 10px 20px;
+    margin: 5px;
     border-radius: 10px;
     border: none;
     cursor: pointer;
@@ -35,36 +32,37 @@ button {
     display: flex;
     margin-top: -15px;
 }
-.row:nth-child(even) {
-    margin-left: 30px;
-}
+.row:nth-child(even) { margin-left: 30px; }
 
 .hex {
     width: 45px;
     height: 45px;
     background: #1e293b;
     margin: 2px;
-    clip-path: polygon(
-        50% 0%, 100% 25%, 100% 75%,
-        50% 100%, 0% 75%, 0% 25%
-    );
+    clip-path: polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
+    user-select: none;
+    text-shadow: 0 0 3px black;
 }
 
-.open { background: #94a3b8; }
-.bomb { background: red; color: white; }
-.flag { background: orange; }
+.open {
+    background: #e2e8f0;
+    color: black;
+}
 
-.n0 { color: #3b82f6; }
-.n1 { color: #14b8a6; }
-.n2 { color: #22c55e; }
-.n3 { color: #84cc16; }
-.n4 { color: #eab308; }
-.n5 { color: #f97316; }
-.n6 { color: #ef4444; }
+.flag { background: orange; }
+.bomb { background: red; }
+
+.n0 { color:#3b82f6;}
+.n1 { color:#14b8a6;}
+.n2 { color:#22c55e;}
+.n3 { color:#84cc16;}
+.n4 { color:#eab308;}
+.n5 { color:#f97316;}
+.n6 { color:#ef4444;}
 
 #status { margin: 10px; }
 </style>
@@ -80,13 +78,16 @@ button {
     <button onclick="startGame('hard')">Hard</button>
     <button onclick="startGame('expert')">Expert</button>
     <button id="remasterBtn" class="hidden" onclick="startGame('remaster')">Re.Master</button>
+    <button onclick="showHelp()">操作方法</button>
     <div id="secretZone">👉 ダブルタップで？？？</div>
+    <div id="bestTimes"></div>
 </div>
 
 <div id="gameArea" class="hidden">
     <div id="status">プレイ中</div>
     <div id="game"></div>
-    <button id="backBtn" class="hidden" onclick="goMenu()">メニューに戻る</button>
+    <button id="undoBtn" class="hidden">一回戻る</button>
+    <button id="backBtn" class="hidden" onclick="goMenu()">メニューへ</button>
 </div>
 
 </div>
@@ -97,45 +98,59 @@ let board = [];
 let gameOver = false;
 let firstClick = true;
 
+let undoUsed = false;
+let lastSafeState = null;
+
+let startTime = 0;
+let timerInterval;
+let currentMode = "";
+
 const game = document.getElementById("game");
 
 // ===== 難易度 =====
 function startGame(mode) {
+    currentMode = mode;
+
     document.getElementById("menu").classList.add("hidden");
     document.getElementById("gameArea").classList.remove("hidden");
 
-    if (mode === "normal") { size = 7; bombCount = 10; }
-    if (mode === "hard")   { size = 9; bombCount = 20; }
-    if (mode === "expert") { size = 11; bombCount = 35; }
-    if (mode === "remaster"){ size = 13; bombCount = 60; }
+    if (mode==="normal"){size=7;bombCount=10;}
+    if (mode==="hard"){size=9;bombCount=20;}
+    if (mode==="expert"){size=11;bombCount=35;}
+    if (mode==="remaster"){size=13;bombCount=60;}
+
+    startTime = Date.now();
+    clearInterval(timerInterval);
+    timerInterval = setInterval(updateTimer,1000);
 
     initGame();
 }
 
 // ===== 初期化 =====
 function initGame() {
-    board = [];
-    game.innerHTML = "";
-    gameOver = false;
-    firstClick = true;
+    board=[];
+    game.innerHTML="";
+    gameOver=false;
+    firstClick=true;
+    undoUsed=false;
+    lastSafeState=null;
 
-    document.getElementById("status").textContent = "プレイ中";
+    document.getElementById("undoBtn").classList.add("hidden");
     document.getElementById("backBtn").classList.add("hidden");
 
-    for (let y = 0; y < size; y++) {
-        const row = document.createElement("div");
-        row.className = "row";
+    for(let y=0;y<size;y++){
+        const row=document.createElement("div");
+        row.className="row";
 
-        for (let x = 0; x < size; x++) {
-            const i = y * size + x;
-            const cell = document.createElement("div");
-            cell.className = "hex";
-            cell.dataset.index = i;
+        for(let x=0;x<size;x++){
+            const i=y*size+x;
+            const cell=document.createElement("div");
+            cell.className="hex";
+            cell.dataset.index=i;
             row.appendChild(cell);
 
-            board.push({ bomb:false, open:false, flag:false, count:0 });
+            board.push({bomb:false,open:false,flag:false,count:0});
         }
-
         game.appendChild(row);
     }
 
@@ -143,167 +158,234 @@ function initGame() {
     countNumbers();
 }
 
-// ===== 爆弾配置 =====
-function placeBombs() {
-    let placed = 0;
-    while (placed < bombCount) {
-        let i = Math.floor(Math.random() * board.length);
-        if (!board[i].bomb) {
-            board[i].bomb = true;
-            placed++;
-        }
+// ===== 爆弾 =====
+function placeBombs(){
+    let p=0;
+    while(p<bombCount){
+        let i=Math.floor(Math.random()*board.length);
+        if(!board[i].bomb){board[i].bomb=true;p++;}
     }
 }
 
-// ===== 隣接 =====
-function getNeighbors(i) {
-    const x = i % size;
-    const y = Math.floor(i / size);
-    const even = y % 2 === 0;
+// ===== 隣 =====
+function getNeighbors(i){
+    const x=i%size,y=Math.floor(i/size);
+    const even=y%2===0;
 
-    const dirs = even
-        ? [[-1,0],[1,0],[0,-1],[-1,-1],[0,1],[-1,1]]
-        : [[-1,0],[1,0],[1,-1],[0,-1],[1,1],[0,1]];
+    const dirs=even?
+    [[-1,0],[1,0],[0,-1],[-1,-1],[0,1],[-1,1]]:
+    [[-1,0],[1,0],[1,-1],[0,-1],[1,1],[0,1]];
 
-    let result = [];
-    dirs.forEach(([dx, dy]) => {
-        const nx = x + dx;
-        const ny = y + dy;
-        if (nx >= 0 && ny >= 0 && nx < size && ny < size) {
-            result.push(ny * size + nx);
-        }
-    });
-    return result;
+    return dirs.map(([dx,dy])=>{
+        let nx=x+dx,ny=y+dy;
+        if(nx>=0&&ny>=0&&nx<size&&ny<size) return ny*size+nx;
+    }).filter(v=>v!==undefined);
 }
 
-// ===== 数字計算 =====
-function countNumbers() {
-    for (let i = 0; i < board.length; i++) {
-        board[i].count = getNeighbors(i).filter(n => board[n].bomb).length;
+// ===== 数字 =====
+function countNumbers(){
+    for(let i=0;i<board.length;i++){
+        board[i].count=getNeighbors(i).filter(n=>board[n].bomb).length;
     }
 }
 
-// ===== セル取得 =====
-function getCellEl(i) {
+// ===== 取得 =====
+function getCellEl(i){
     return document.querySelector(`.hex[data-index='${i}']`);
 }
 
+// ===== 操作（統合） =====
 let pressTimer;
-let isLongPress = false;
+let isLong=false;
 
-// ===== PC + スマホ両対応 =====
-document.addEventListener("pointerdown", (e) => {
-    const target = e.target.closest(".hex");
-    if (!target || gameOver) return;
+document.addEventListener("pointerdown",e=>{
+    const t=e.target.closest(".hex");
+    if(!t||gameOver)return;
+    const i=parseInt(t.dataset.index);
+    isLong=false;
 
-    const idx = parseInt(target.dataset.index);
-    isLongPress = false;
-
-    pressTimer = setTimeout(() => {
-        toggleFlag(idx);
-        isLongPress = true;
-    }, 400); // 長押し判定
+    pressTimer=setTimeout(()=>{
+        toggleFlag(i);
+        isLong=true;
+    },400);
 });
 
-document.addEventListener("pointerup", (e) => {
+document.addEventListener("pointerup",e=>{
     clearTimeout(pressTimer);
+    const t=e.target.closest(".hex");
+    if(!t||gameOver)return;
+    const i=parseInt(t.dataset.index);
 
-    const target = e.target.closest(".hex");
-    if (!target || gameOver) return;
-
-    const idx = parseInt(target.dataset.index);
-
-    // 長押しじゃなければ開く
-    if (!isLongPress) {
-        openCell(idx);
-    }
+    if(!isLong) openCell(i);
 });
+
 // ===== 開く =====
-function openCell(i) {
-    const cell = board[i];
-    const el = getCellEl(i);
+function openCell(i){
+    const cell=board[i];
+    const el=getCellEl(i);
+    if(cell.open||cell.flag)return;
 
-    if (cell.open || cell.flag) return;
+    // 初手0確定
+    if(firstClick){
+        firstClick=false;
+        const safe=[i,...getNeighbors(i)];
 
-    // ===== 初手0確定 =====
-    if (firstClick) {
-        firstClick = false;
-
-        const safeZone = [i, ...getNeighbors(i)];
-
-        safeZone.forEach(idx => {
-            if (board[idx].bomb) {
-                board[idx].bomb = false;
-
-                let moved = false;
-                while (!moved) {
-                    let r = Math.floor(Math.random() * board.length);
-                    if (!board[r].bomb && !safeZone.includes(r)) {
-                        board[r].bomb = true;
-                        moved = true;
+        safe.forEach(idx=>{
+            if(board[idx].bomb){
+                board[idx].bomb=false;
+                let moved=false;
+                while(!moved){
+                    let r=Math.floor(Math.random()*board.length);
+                    if(!board[r].bomb&&!safe.includes(r)){
+                        board[r].bomb=true;
+                        moved=true;
                     }
                 }
             }
         });
-
         countNumbers();
     }
 
-    cell.open = true;
+    // 状態保存
+    if(!cell.bomb){
+        lastSafeState=JSON.stringify(board);
+    }
+
+    cell.open=true;
     el.classList.add("open");
 
-    if (cell.bomb) {
-        el.textContent = "💣";
+    if(cell.bomb){
+        el.textContent="💣";
         el.classList.add("bomb");
         endGame("ゲームオーバー！");
         return;
     }
 
-    el.textContent = cell.count;
-    el.classList.add("n" + cell.count);
+    el.textContent=cell.count;
+    el.classList.add("n"+cell.count);
 
     checkClear();
 }
 
 // ===== フラグ =====
-function toggleFlag(i) {
-    const cell = board[i];
-    if (cell.open) return;
-
-    cell.flag = !cell.flag;
-    getCellEl(i).classList.toggle("flag");
+function toggleFlag(i){
+    const c=board[i];
+    if(c.open)return;
+    c.flag=!c.flag;
+    const el=getCellEl(i);
+    el.classList.toggle("flag");
+    el.textContent=c.flag?"🚩":"";
 }
 
 // ===== 終了 =====
-function endGame(text) {
-    gameOver = true;
-    document.getElementById("status").textContent = text;
+function endGame(text){
+    gameOver=true;
+    clearInterval(timerInterval);
+
+    document.getElementById("status").textContent=text;
     document.getElementById("backBtn").classList.remove("hidden");
+
+    if(!undoUsed&&lastSafeState){
+        document.getElementById("undoBtn").classList.remove("hidden");
+    }
 }
+
+// ===== 戻る =====
+document.getElementById("undoBtn").onclick=()=>{
+    if(undoUsed||!lastSafeState)return;
+    undoUsed=true;
+
+    board=JSON.parse(lastSafeState);
+
+    document.querySelectorAll(".hex").forEach((el,i)=>{
+        el.className="hex";
+        const c=board[i];
+
+        if(c.open){
+            el.classList.add("open");
+            el.textContent=c.count;
+            el.classList.add("n"+c.count);
+        }
+        if(c.flag){
+            el.classList.add("flag");
+            el.textContent="🚩";
+        }
+    });
+
+    gameOver=false;
+    document.getElementById("status").textContent="復帰！";
+    document.getElementById("undoBtn").classList.add("hidden");
+    document.getElementById("backBtn").classList.add("hidden");
+};
 
 // ===== クリア =====
-function checkClear() {
-    const cleared = board.every(c => c.open || c.bomb);
-    if (cleared) endGame("クリア！🎉");
+function checkClear(){
+    if(board.every(c=>c.open||c.bomb)){
+        clearInterval(timerInterval);
+
+        let time=Math.floor((Date.now()-startTime)/1000);
+        let key="best_"+currentMode;
+        let best=localStorage.getItem(key);
+
+        if(!best||time<best) localStorage.setItem(key,time);
+
+        endGame("クリア！ "+time+"秒");
+    }
 }
 
-// ===== メニュー戻る =====
-function goMenu() {
+// ===== タイマー =====
+function updateTimer(){
+    let t=Math.floor((Date.now()-startTime)/1000);
+    document.getElementById("status").textContent="⏱ "+t+"秒";
+}
+
+// ===== メニュー =====
+function goMenu(){
     document.getElementById("menu").classList.remove("hidden");
     document.getElementById("gameArea").classList.add("hidden");
+    showBest();
 }
 
-// ===== ダブルタップ解放 =====
-let lastTap = 0;
-document.getElementById("secretZone").addEventListener("click", () => {
-    const now = Date.now();
-    if (now - lastTap < 300) {
+// ===== ベスト表示 =====
+function showBest(){
+    const modes=["normal","hard","expert","remaster"];
+    let text="🏆 ベスト<br>";
+    modes.forEach(m=>{
+        let t=localStorage.getItem("best_"+m);
+        if(t) text+=m+" : "+t+"秒<br>";
+    });
+    document.getElementById("bestTimes").innerHTML=text;
+}
+
+// ===== 操作説明 =====
+function showHelp(){
+alert(`操作方法
+
+PC:
+クリック → 開く
+長押し → フラグ
+
+スマホ:
+タップ → 開く
+長押し → フラグ
+
+ルール:
+爆弾を避けろ！
+初手は必ず安全（0）`);
+}
+
+// ===== 隠し解放 =====
+let lastTap=0;
+document.getElementById("secretZone").addEventListener("click",()=>{
+    let now=Date.now();
+    if(now-lastTap<300){
         document.getElementById("remasterBtn").classList.remove("hidden");
         alert("Re.Master 解放！");
     }
-    lastTap = now;
+    lastTap=now;
 });
-</script>
 
+showBest();
+</script>
 </body>
 </html>
