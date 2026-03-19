@@ -228,9 +228,31 @@ function openCell(i) {
     el.textContent = cell.count;
     el.classList.add("n" + cell.count);
 
-    if (cell.count === 0) {
-        getNeighbors(i).forEach(n => openCell(n));
+   function openCell(i) {
+    const cell = board[i];
+    const el = getCellEl(i);
+
+    if (cell.open || cell.flag) return;
+
+    cell.open = true;
+    el.classList.add("open");
+
+    if (cell.bomb) {
+        el.textContent = "💣";
+        el.classList.add("bomb");
+        endGame("ゲームオーバー！");
+        return;
     }
+
+    // 数字表示（0もそのまま表示）
+    el.textContent = cell.count;
+    el.classList.add("n" + cell.count);
+
+    // ★ ここがポイント：0でも広げない
+    // （何も処理しない）
+
+    checkClear();
+}
 
     checkClear();
 }
