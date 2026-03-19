@@ -71,7 +71,7 @@ button {
 
 <div id="container">
 
-<h1>💣 Mine-s-Hexagon 💣</h1>
+<h1> Mine-s-Hexagon </h1>
 
 <div id="menu">
     <button onclick="startGame('normal')">Normal</button>
@@ -79,7 +79,7 @@ button {
     <button onclick="startGame('expert')">Expert</button>
     <button id="remasterBtn" class="hidden" onclick="startGame('remaster')">Re.Master</button>
     <button onclick="showHelp()">操作方法</button>
-    <div id="secretZone">👉 ダブルタップで？？？</div>
+    <div id="secretZone">👉 </div>
     <div id="bestTimes"></div>
 </div>
 
@@ -114,10 +114,25 @@ function startGame(mode) {
     document.getElementById("menu").classList.add("hidden");
     document.getElementById("gameArea").classList.remove("hidden");
 
-    if (mode==="normal"){size=7;bombCount=10;}
-    if (mode==="hard"){size=9;bombCount=20;}
-    if (mode==="expert"){size=11;bombCount=35;}
-    if (mode==="remaster"){size=13;bombCount=60;}
+   if (mode === "normal") {
+    size = 7;
+    bombCount = Math.floor(size * size * 0.20);
+}
+
+if (mode === "hard") {
+    size = 9;
+    bombCount = Math.floor(size * size * 0.25);
+}
+
+if (mode === "expert") {
+    size = 11;
+    bombCount = Math.floor(size * size * 0.30);
+}
+
+if (mode === "remaster") {
+    size = 13;
+    bombCount = Math.floor(size * size * 0.33);
+}
 
     startTime = Date.now();
     clearInterval(timerInterval);
@@ -329,7 +344,7 @@ function checkClear(){
 
         if(!best||time<best) localStorage.setItem(key,time);
 
-        endGame("クリア！ "+time+"秒");
+        endGame("Congratulation！ "+time+"秒");
     }
 }
 
