@@ -1,8 +1,9 @@
 <!DOCTYPE html>
+
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Mine-s-Hexagon</title>
+<title>Mine-s-Hexagon（完成版）</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body {
@@ -24,13 +25,13 @@ button{padding:10px 20px;margin:5px;border-radius:10px;border:none;cursor:pointe
 .row:nth-child(even){margin-left:30px;}
 
 .hex{
-    width:45px;height:45px;
-    background:#1e293b;
-    margin:2px;
-    clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
-    display:flex;align-items:center;justify-content:center;
-    font-weight:bold;
-    text-shadow:0 0 3px black;
+width:45px;height:45px;
+background:#1e293b;
+margin:2px;
+clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+display:flex;align-items:center;justify-content:center;
+font-weight:bold;
+text-shadow:0 0 3px black;
 }
 
 .open{background:#e2e8f0;color:black;}
@@ -45,14 +46,14 @@ button{padding:10px 20px;margin:5px;border-radius:10px;border:none;cursor:pointe
 .n5{color:#f97316;}
 .n6{color:#ef4444;}
 
-#status{margin:10px;}
-</style>
+#status{margin:10px;} </style>
+
 </head>
 <body>
 
 <div id="container">
 
-<h1>💣 Mine-s-Hexagon 💣</h1>
+<h1> Mine-s-Hexagon </h1>
 
 <div id="menu">
 <button onclick="startGame('normal')">Normal</button>
@@ -67,6 +68,7 @@ button{padding:10px 20px;margin:5px;border-radius:10px;border:none;cursor:pointe
 <div id="gameArea" class="hidden">
 <div id="status"></div>
 <div id="game"></div>
+<button id="hintBtn" onclick="useHint()">ヒント（1回）</button>
 <button id="undoBtn" class="hidden">一回戻る</button>
 <button id="backBtn" class="hidden" onclick="goMenu()">メニューへ</button>
 </div>
@@ -76,14 +78,47 @@ button{padding:10px 20px;margin:5px;border-radius:10px;border:none;cursor:pointe
 <script>
 let size,bombCount,board=[],gameOver=false,firstClick=true;
 let undoUsed=false,lastSafeState=null;
-let startTime=0,timerInterval,currentMode="";
+let currentMode="";
 let flagMistakes=0;
-
-// ★追加（制限）
-let unflagLimit=0;
 let unflagUsed=0;
+let hintUsed=false;
 
 const game=document.getElementById("game");
+
+// ===== スコア =====
+function calculateScore(){
+let base = unflagUsed;
+if(flagMistakes === 0) base -= 3;
+return Math.max(0, base);
+}
+
+// ===== ランク =====
+function getRank(score){
+if(score === 0) return "🏆 S";
+if(score <= 2) return "🥇 A";
+if(score <= 5) return "🥈 B";
+return "🥉 C";
+}
+
+// ===== 履歴保存 =====
+function savePlayData(score, isNoMiss, rank){
+let key = "stats_" + currentMode;
+let data = JSON.parse(localStorage.getItem(key)) || {
+plays:0,totalScore:0,best:null,sCount:0,noMiss:0
+};
+
+data.plays++;
+data.totalScore += score;
+
+if(data.best === null || score < data.best){
+data.best = score;
+}
+
+if(rank.includes("S")) data.sCount++;
+if(isNoMiss) data.noMiss++;
+
+localStorage.setItem(key, JSON.stringify(data));
+}
 
 // ===== 難易度 =====
 function startGame(mode){
@@ -92,31 +127,22 @@ currentMode=mode;
 document.getElementById("menu").classList.add("hidden");
 document.getElementById("gameArea").classList.remove("hidden");
 
-// ★制限込み設定
 if(mode==="normal"){
-    size=7;
-    bombCount=Math.floor(size*size*0.20);
-    unflagLimit=10;
+size=7;
+bombCount=Math.floor(size*size*0.20);
 }
 if(mode==="hard"){
-    size=9;
-    bombCount=Math.floor(size*size*0.25);
-    unflagLimit=7;
+size=9;
+bombCount=Math.floor(size*size*0.25);
 }
 if(mode==="expert"){
-    size=11;
-    bombCount=Math.floor(size*size*0.30);
-    unflagLimit=5;
+size=11;
+bombCount=Math.floor(size*size*0.30);
 }
 if(mode==="remaster"){
-    size=13;
-    bombCount=Math.floor(size*size*0.33);
-    unflagLimit=3;
+size=13;
+bombCount=Math.floor(size*size*0.33);
 }
-
-startTime=Date.now();
-clearInterval(timerInterval);
-timerInterval=setInterval(updateTimer,1000);
 
 initGame();
 }
@@ -129,9 +155,11 @@ undoUsed=false;lastSafeState=null;
 
 flagMistakes=0;
 unflagUsed=0;
+hintUsed=false;
 
 document.getElementById("undoBtn").classList.add("hidden");
 document.getElementById("backBtn").classList.add("hidden");
+document.getElementById("hintBtn").disabled=false;
 
 updateStatus();
 
@@ -219,13 +247,11 @@ const el=getCellEl(i);
 
 if(cell.open)return;
 
-// フラグなら解除
 if(cell.flag){
 toggleFlag(i);
 return;
 }
 
-// 初手0確定
 if(firstClick){
 firstClick=false;
 const safe=[i,...getNeighbors(i)];
@@ -266,54 +292,61 @@ el.classList.add("n"+cell.count);
 checkClear();
 }
 
-// ===== フラグ =====
+// ===== フラグ（ミス累積）=====
 function toggleFlag(i){
 const c=board[i];
 if(c.open)return;
 
 const el=getCellEl(i);
 
-// フラグON
 if(!c.flag){
 c.flag=true;
 el.classList.add("flag");
 el.textContent="🚩";
 
-if(!c.bomb) flagMistakes++;
-}
-// フラグOFF（制限あり）
-else{
-if(unflagUsed>=unflagLimit){
-alert("これ以上フラグ解除できない！");
-return;
-}
+if(!c.bomb) flagMistakes++; // 累積
 
+}else{
 unflagUsed++;
 
 c.flag=false;
 el.classList.remove("flag");
 el.textContent="";
-
-if(!c.bomb) flagMistakes--;
 }
 
 updateStatus();
 }
 
-// ===== ステータス =====
-function updateStatus(){
-let t=Math.floor((Date.now()-startTime)/1000);
-document.getElementById("status").textContent=
-`⏱ ${t}秒 | ❌ミス:${flagMistakes} | 🔄解除:${unflagUsed}/${unflagLimit}`;
+// ===== ヒント =====
+function useHint(){
+if(hintUsed||gameOver)return;
+
+hintUsed=true;
+document.getElementById("hintBtn").disabled=true;
+
+let safeCells=board.map((c,i)=>({c,i}))
+.filter(x=>!x.c.bomb&&!x.c.open);
+
+if(safeCells.length===0)return;
+
+let pick=safeCells[Math.floor(Math.random()*safeCells.length)].i;
+
+openCell(pick);
+
+let el=getCellEl(pick);
+el.style.boxShadow="0 0 15px yellow";
+setTimeout(()=>{el.style.boxShadow="";},800);
 }
 
-function updateTimer(){updateStatus();}
+// ===== ステータス =====
+function updateStatus(){
+document.getElementById("status").textContent=
+`🏆 スコア:${unflagUsed} | ❌ミス:${flagMistakes} | 💡ヒント:${hintUsed?"使用済":"未使用"}`;
+}
 
 // ===== 終了 =====
 function endGame(text){
 gameOver=true;
-clearInterval(timerInterval);
-
 document.getElementById("status").textContent=text;
 document.getElementById("backBtn").classList.remove("hidden");
 
@@ -353,15 +386,19 @@ document.getElementById("backBtn").classList.add("hidden");
 // ===== クリア =====
 function checkClear(){
 if(board.every(c=>c.open||c.bomb)){
-clearInterval(timerInterval);
 
-let time=Math.floor((Date.now()-startTime)/1000);
-let key="best_"+currentMode;
-let best=localStorage.getItem(key);
+let score=calculateScore();
+let rank=getRank(score);
+let isNoMiss=(flagMistakes===0);
 
-if(!best||time<best) localStorage.setItem(key,time);
+savePlayData(score,isNoMiss,rank);
 
-endGame("Congratulations！ "+time+"秒");
+let bonus=isNoMiss?"✨ノーミスボーナス！":"";
+
+endGame(`🎉 クリア！
+🏆 スコア:${score}
+${bonus}
+🏅 ランク:${rank}`);
 }
 }
 
@@ -369,17 +406,31 @@ endGame("Congratulations！ "+time+"秒");
 function goMenu(){
 document.getElementById("menu").classList.remove("hidden");
 document.getElementById("gameArea").classList.add("hidden");
-showBest();
+showStats();
 }
 
-// ===== ベスト =====
-function showBest(){
+// ===== 履歴 =====
+function showStats(){
 const modes=["normal","hard","expert","remaster"];
-let text="🏆 ベスト<br>";
+let text="📊 プレイ履歴<br>";
+
 modes.forEach(m=>{
-let t=localStorage.getItem("best_"+m);
-if(t) text+=m+" : "+t+"秒<br>";
+let data=JSON.parse(localStorage.getItem("stats_"+m));
+if(data){
+let avg=Math.round(data.totalScore/data.plays*100)/100;
+
+text+=`
+<hr>
+<b>${m}</b><br>
+回数:${data.plays}<br>
+ベスト:${data.best}<br>
+平均:${avg}<br>
+Sランク:${data.sCount}<br>
+ノーミス:${data.noMiss}<br>
+`;
+}
 });
+
 document.getElementById("bestTimes").innerHTML=text;
 }
 
@@ -389,13 +440,17 @@ alert(`操作方法
 
 タップ → 開く
 長押し → フラグ
-フラグ状態でタップ → 解除（回数制限あり）
+フラグ状態でもう一度タップ→フラグ解除
 
 ルール:
-爆弾を避けながら探し出しましょう
-爆弾だと思う場所にフラグを立ててください
-爆弾に耐えられるのは一回までなので要注意
-初手は必ず安全`);
+爆弾があると思うところにフラグを立ててください
+爆弾に耐えられるのは一度だけ
+フラグ解除回数が少ないほどスコアが高くなります
+ミスの回数は積み重なっていきます
+ヒントは1回だけ使えます
+
+爆弾を避けきりつつすべて探し出しましょう
+`);
 }
 
 // ===== 隠し =====
@@ -408,6 +463,13 @@ alert("Re.Master 解放！");
 }
 lastTap=now;
 });
+
+showStats();
+</script>
+
+</body>
+</html>
+
 
 showBest();
 </script>
