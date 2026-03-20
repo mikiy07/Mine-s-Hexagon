@@ -3,7 +3,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Mine-s-Hexagon</title>
+<title>Mine-s-Hexagon（完成版）</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body {
@@ -53,7 +53,7 @@ text-shadow:0 0 3px black;
 
 <div id="container">
 
-<h1> Mine-s-Hexagon </h1>
+<h1>💣 Mine-s-Hexagon 💣</h1>
 
 <div id="menu">
 <button onclick="startGame('normal')">Normal</button>
@@ -304,7 +304,7 @@ c.flag=true;
 el.classList.add("flag");
 el.textContent="🚩";
 
-if(!c.bomb) flagMistakes++; // 累積
+if(!c.bomb) flagMistakes++;
 
 }else{
 unflagUsed++;
@@ -406,22 +406,24 @@ ${bonus}
 function goMenu(){
 document.getElementById("menu").classList.remove("hidden");
 document.getElementById("gameArea").classList.add("hidden");
+showStats();
+}
+
+// ===== 表示（ベスト→履歴）=====
 function showStats(){
 const modes=["normal","hard","expert","remaster"];
 
-// ===== ベストスコア =====
+// ベスト
 let bestText="🏆 ベストスコア<br>";
-
 modes.forEach(m=>{
 let data=JSON.parse(localStorage.getItem("stats_"+m));
-if(data && data.best !== null){
-bestText+=`${m} : ${data.best}<br>`;
+if(data && data.best!==null){
+bestText+=`${m} : ${data.best} (${getRank(data.best)})<br>`;
 }
 });
 
-// ===== 履歴 =====
+// 履歴
 let statsText="<br>📊 プレイ履歴<br>";
-
 modes.forEach(m=>{
 let data=JSON.parse(localStorage.getItem("stats_"+m));
 if(data){
@@ -439,33 +441,7 @@ Sランク:${data.sCount}<br>
 }
 });
 
-// 合体表示
 document.getElementById("bestTimes").innerHTML = bestText + statsText;
-}
-
-// ===== 履歴 =====
-function showStats(){
-const modes=["normal","hard","expert","remaster"];
-let text="📊 プレイ履歴<br>";
-
-modes.forEach(m=>{
-let data=JSON.parse(localStorage.getItem("stats_"+m));
-if(data){
-let avg=Math.round(data.totalScore/data.plays*100)/100;
-
-text+=`
-<hr>
-<b>${m}</b><br>
-回数:${data.plays}<br>
-ベスト:${data.best}<br>
-平均:${avg}<br>
-Sランク:${data.sCount}<br>
-ノーミス:${data.noMiss}<br>
-`;
-}
-});
-
-document.getElementById("bestTimes").innerHTML=text;
 }
 
 // ===== 操作説明 =====
@@ -474,16 +450,11 @@ alert(`操作方法
 
 タップ → 開く
 長押し → フラグ
-フラグ状態でもう一度タップ→フラグ解除
 
 ルール:
-爆弾があると思うところにフラグを立ててください
-爆弾に耐えられるのは一度だけ
-フラグ解除回数が少ないほどスコアが高くなります
-ミスの回数は積み重なっていきます
-ヒントは1回だけ使えます
-
-爆弾を避けきりつつすべて探し出しましょう
+フラグ解除回数が少ないほど高評価
+ミスは累積
+ヒントは1回だけ
 `);
 }
 
@@ -504,8 +475,4 @@ showStats();
 </body>
 </html>
 
-
-showBest();
-</script>
-</body>
 </html>
