@@ -3,7 +3,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Mine-s-Hexagon（完成版）</title>
+<title>Mine-s-Hexagon</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body {
@@ -406,7 +406,41 @@ ${bonus}
 function goMenu(){
 document.getElementById("menu").classList.remove("hidden");
 document.getElementById("gameArea").classList.add("hidden");
-showStats();
+function showStats(){
+const modes=["normal","hard","expert","remaster"];
+
+// ===== ベストスコア =====
+let bestText="🏆 ベストスコア<br>";
+
+modes.forEach(m=>{
+let data=JSON.parse(localStorage.getItem("stats_"+m));
+if(data && data.best !== null){
+bestText+=`${m} : ${data.best}<br>`;
+}
+});
+
+// ===== 履歴 =====
+let statsText="<br>📊 プレイ履歴<br>";
+
+modes.forEach(m=>{
+let data=JSON.parse(localStorage.getItem("stats_"+m));
+if(data){
+let avg=Math.round(data.totalScore/data.plays*100)/100;
+
+statsText+=`
+<hr>
+<b>${m}</b><br>
+回数:${data.plays}<br>
+ベスト:${data.best}<br>
+平均:${avg}<br>
+Sランク:${data.sCount}<br>
+ノーミス:${data.noMiss}<br>
+`;
+}
+});
+
+// 合体表示
+document.getElementById("bestTimes").innerHTML = bestText + statsText;
 }
 
 // ===== 履歴 =====
