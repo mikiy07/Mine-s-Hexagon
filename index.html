@@ -46,7 +46,24 @@ text-shadow:0 0 3px black;
 .n5{color:#f97316;}
 .n6{color:#ef4444;}
 
-#status{margin:10px;} </style>
+#status{margin:10px;}
+
+/* ===== 追加：横並び履歴 ===== */
+.statsWrap{
+display:flex;
+flex-wrap:wrap;
+gap:10px;
+justify-content:center;
+margin-top:10px;
+}
+
+.statCard{
+background:#1e293b;
+padding:10px;
+border-radius:10px;
+min-width:140px;
+box-shadow:0 0 8px rgba(0,0,0,0.5);
+} </style>
 
 </head>
 <body>
@@ -85,14 +102,12 @@ let hintUsed=false;
 
 const game=document.getElementById("game");
 
-// ===== スコア =====
 function calculateScore(){
 let base = unflagUsed;
 if(flagMistakes === 0) base -= 3;
 return Math.max(0, base);
 }
 
-// ===== ランク =====
 function getRank(score){
 if(score === 0) return "🏆 S";
 if(score <= 2) return "🥇 A";
@@ -100,7 +115,6 @@ if(score <= 5) return "🥈 B";
 return "🥉 C";
 }
 
-// ===== 履歴保存 =====
 function savePlayData(score, isNoMiss, rank){
 let key = "stats_" + currentMode;
 let data = JSON.parse(localStorage.getItem(key)) || {
@@ -120,34 +134,20 @@ if(isNoMiss) data.noMiss++;
 localStorage.setItem(key, JSON.stringify(data));
 }
 
-// ===== 難易度 =====
 function startGame(mode){
 currentMode=mode;
 
 document.getElementById("menu").classList.add("hidden");
 document.getElementById("gameArea").classList.remove("hidden");
 
-if(mode==="normal"){
-size=7;
-bombCount=Math.floor(size*size*0.20);
-}
-if(mode==="hard"){
-size=9;
-bombCount=Math.floor(size*size*0.25);
-}
-if(mode==="expert"){
-size=11;
-bombCount=Math.floor(size*size*0.30);
-}
-if(mode==="remaster"){
-size=13;
-bombCount=Math.floor(size*size*0.33);
-}
+if(mode==="normal"){ size=7; bombCount=Math.floor(size*size*0.20); }
+if(mode==="hard"){ size=9; bombCount=Math.floor(size*size*0.25); }
+if(mode==="expert"){ size=11; bombCount=Math.floor(size*size*0.30); }
+if(mode==="remaster"){ size=13; bombCount=Math.floor(size*size*0.33); }
 
 initGame();
 }
 
-// ===== 初期化 =====
 function initGame(){
 board=[];game.innerHTML="";
 gameOver=false;firstClick=true;
@@ -183,7 +183,6 @@ placeBombs();
 countNumbers();
 }
 
-// ===== 爆弾 =====
 function placeBombs(){
 let p=0;
 while(p<bombCount){
@@ -192,7 +191,6 @@ if(!board[i].bomb){board[i].bomb=true;p++;}
 }
 }
 
-// ===== 隣 =====
 function getNeighbors(i){
 const x=i%size,y=Math.floor(i/size),even=y%2===0;
 const dirs=even?
@@ -204,19 +202,16 @@ if(nx>=0&&ny>=0&&nx<size&&ny<size)return ny*size+nx;
 }).filter(v=>v!==undefined);
 }
 
-// ===== 数字 =====
 function countNumbers(){
 for(let i=0;i<board.length;i++){
 board[i].count=getNeighbors(i).filter(n=>board[n].bomb).length;
 }
 }
 
-// ===== セル取得 =====
 function getCellEl(i){
 return document.querySelector(`.hex[data-index='${i}']`);
 }
 
-// ===== 操作 =====
 let pressTimer,isLong=false;
 
 document.addEventListener("pointerdown",e=>{
@@ -240,7 +235,6 @@ const i=parseInt(t.dataset.index);
 if(!isLong) openCell(i);
 });
 
-// ===== 開く =====
 function openCell(i){
 const cell=board[i];
 const el=getCellEl(i);
@@ -292,7 +286,6 @@ el.classList.add("n"+cell.count);
 checkClear();
 }
 
-// ===== フラグ（ミス累積）=====
 function toggleFlag(i){
 const c=board[i];
 if(c.open)return;
@@ -317,7 +310,6 @@ el.textContent="";
 updateStatus();
 }
 
-// ===== ヒント =====
 function useHint(){
 if(hintUsed||gameOver)return;
 
@@ -332,19 +324,13 @@ if(safeCells.length===0)return;
 let pick=safeCells[Math.floor(Math.random()*safeCells.length)].i;
 
 openCell(pick);
-
-let el=getCellEl(pick);
-el.style.boxShadow="0 0 15px yellow";
-setTimeout(()=>{el.style.boxShadow="";},800);
 }
 
-// ===== ステータス =====
 function updateStatus(){
 document.getElementById("status").textContent=
 `🏆 スコア:${unflagUsed} | ❌ミス:${flagMistakes} | 💡ヒント:${hintUsed?"使用済":"未使用"}`;
 }
 
-// ===== 終了 =====
 function endGame(text){
 gameOver=true;
 document.getElementById("status").textContent=text;
@@ -355,7 +341,6 @@ document.getElementById("undoBtn").classList.remove("hidden");
 }
 }
 
-// ===== 戻る =====
 document.getElementById("undoBtn").onclick=()=>{
 if(undoUsed||!lastSafeState)return;
 undoUsed=true;
@@ -383,7 +368,6 @@ document.getElementById("undoBtn").classList.add("hidden");
 document.getElementById("backBtn").classList.add("hidden");
 };
 
-// ===== クリア =====
 function checkClear(){
 if(board.every(c=>c.open||c.bomb)){
 
@@ -402,19 +386,17 @@ ${bonus}
 }
 }
 
-// ===== メニュー =====
 function goMenu(){
 document.getElementById("menu").classList.remove("hidden");
 document.getElementById("gameArea").classList.add("hidden");
 showStats();
 }
 
-// ===== 表示（ベスト→履歴）=====
+/* ===== 横並び履歴（ここが変更点）===== */
 function showStats(){
 const modes=["normal","hard","expert","remaster"];
 
-// ベスト
-let bestText="🏆 ベストスコア<br>";
+let bestText="<h3>🏆 ベストスコア</h3>";
 modes.forEach(m=>{
 let data=JSON.parse(localStorage.getItem("stats_"+m));
 if(data && data.best!==null){
@@ -422,29 +404,31 @@ bestText+=`${m} : ${data.best} (${getRank(data.best)})<br>`;
 }
 });
 
-// 履歴
-let statsText="<br>📊 プレイ履歴<br>";
+let statsHTML="<h3>📊 プレイ履歴</h3><div class='statsWrap'>";
+
 modes.forEach(m=>{
 let data=JSON.parse(localStorage.getItem("stats_"+m));
 if(data){
 let avg=Math.round(data.totalScore/data.plays*100)/100;
 
-statsText+=`
-<hr>
+statsHTML+=`
+<div class="statCard">
 <b>${m}</b><br>
 回数:${data.plays}<br>
 ベスト:${data.best}<br>
 平均:${avg}<br>
-Sランク:${data.sCount}<br>
-ノーミス:${data.noMiss}<br>
+S:${data.sCount}<br>
+ノーミス:${data.noMiss}
+</div>
 `;
 }
 });
 
-document.getElementById("bestTimes").innerHTML = bestText + statsText;
+statsHTML+="</div>";
+
+document.getElementById("bestTimes").innerHTML = bestText + statsHTML;
 }
 
-// ===== 操作説明 =====
 function showHelp(){
 alert(`操作方法
 
@@ -461,7 +445,6 @@ alert(`操作方法
 `);
 }
 
-// ===== 隠し =====
 let lastTap=0;
 document.getElementById("secretZone").addEventListener("click",()=>{
 let now=Date.now();
@@ -476,6 +459,4 @@ showStats();
 </script>
 
 </body>
-</html>
-
 </html>
